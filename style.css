@@ -1,0 +1,56 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background: #f0f0f0;
+}
+
+#game-info {
+    margin-bottom: 10px;
+}
+
+#plinko-canvas {
+    background: #222;
+    display: block;
+    margin: 0 auto 10px auto;
+    border: 2px solid #444;
+}
+
+#score-boxes {
+    display: flex;
+    justify-content: center;
+    width: 400px;
+    margin: 0 auto;
+}
+
+.score-box {
+    flex: 1;
+    height: 50px;
+    line-height: 50px;
+    background: #eee;
+    border: 2px solid #888;
+    margin: 0 2px;
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.score-box.active {
+    background: #ffd700;
+}
+
+button#spawn-ball {
+    padding: 8px 20px;
+    font-size: 1em;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-left: 15px;
+}
+
+button#spawn-ball:disabled {
+    background: #aaa;
+    cursor: not-allowed;
+}

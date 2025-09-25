@@ -3,7 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <title>Plinko Game</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/gamebackup/plinko@refs/heads/main/style.css">
+    <style>
+    body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        background: #f0f0f0;
+    }
+    #game-info { margin-bottom: 10px; }
+    #plinko-canvas {
+        background: #222;
+        display: block;
+        margin: 0 auto 10px auto;
+        border: 2px solid #444;
+    }
+    #score-boxes {
+        display: flex;
+        justify-content: center;
+        width: 400px;
+        margin: 0 auto;
+    }
+    .score-box {
+        flex: 1;
+        height: 50px;
+        line-height: 50px;
+        background: #eee;
+        border: 2px solid #888;
+        margin: 0 2px;
+        font-size: 1.2em;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .score-box.active { background: #ffd700; }
+    button#spawn-ball {
+        padding: 8px 20px;
+        font-size: 1em;
+        background: #28a745;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        margin-left: 15px;
+    }
+    button#spawn-ball:disabled {
+        background: #aaa;
+        cursor: not-allowed;
+    }
+    </style>
 </head>
 <body>
     <h1>Plinko Game</h1>
@@ -19,6 +65,182 @@
         <div class="score-box" data-multiplier="1">x1</div>
         <div class="score-box" data-multiplier="0.5">x0.5</div>
     </div>
-    <script src="https://cdn.jsdelivr.net/gh/gamebackup/plinko@refs/heads/main/game.js"></script>
+    <script>
+    const canvas = document.getElementById('plinko-canvas');
+    const ctx = canvas.getContext('2d');
+    const scoreBoxes = Array.from(document.querySelectorAll('.score-box'));
+    const moneySpan = document.getElementById('money');
+    const spawnBtn = document.getElementById('spawn-ball');
+
+    let money = 250;
+    const ballCost = 25;
+    const ballRadius = 10;
+    const pegRadius = 8;
+    const gravity = 0.3;
+    const friction = 0.99;
+    const pegRows = 7;
+    const pegsPerRow = 8;
+    const pegSpacingX = canvas.width / (pegsPerRow + 1);
+    const pegSpacingY = 60;
+    const pegOffsetY = 80;
+
+    const pegs = [];
+    for (let row = 0; row < pegRows; row++) {
+        for (let col = 0; col < pegsPerRow; col++) {
+            const offset = (row % 2) ? pegSpacingX/2 : 0;
+            const x = pegSpacingX * (col + 1) + offset;
+            const y = pegOffsetY + pegSpacingY * row;
+            pegs.push({ x, y });
+        }
+    }
+
+    const scoreBoxCount = scoreBoxes.length;
+    const scoreBoxWidth = canvas.width / scoreBoxCount;
+    const scoreBoxMultipliers = scoreBoxes.map(box =>
+        parseFloat(box.getAttribute('data-multiplier'))
+    );
+
+    let balls = [];
+
+    function drawPegs() {
+        ctx.fillStyle = '#fff';
+        pegs.forEach(peg => {
+            ctx.beginPath();
+            ctx.arc(peg.x, peg.y, pegRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#888';
+            ctx.stroke();
+        });
+    }
+
+    function drawBalls() {
+        balls.forEach(ball => {
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ballRadius, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff4136';
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.stroke();
+        });
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawPegs();
+        drawBalls();
+    }
+
+    function updateBalls() {
+        balls.forEach(ball => {
+            // Gravity & movement
+            ball.vy += gravity;
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            // Wall collision
+            if (ball.x - ballRadius < 0) {
+                ball.x = ballRadius;
+                ball.vx *= -0.4;
+            } else if (ball.x + ballRadius > canvas.width) {
+                ball.x = canvas.width - ballRadius;
+                ball.vx *= -0.4;
+            }
+
+            // Peg collision (robust)
+            pegs.forEach(peg => {
+                const dx = ball.x - peg.x;
+                const dy = ball.y - peg.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const minDist = pegRadius + ballRadius;
+
+                if (dist < minDist) {
+                    // Normal vector
+                    const nx = dx / dist;
+                    const ny = dy / dist;
+
+                    // Strongly resolve overlap (move ball fully outside peg)
+                    ball.x = peg.x + nx * minDist;
+                    ball.y = peg.y + ny * minDist;
+
+                    // Reflect velocity along normal if moving into peg
+                    const vDotN = ball.vx * nx + ball.vy * ny;
+                    if (vDotN < 0) {
+                        ball.vx -= 2 * vDotN * nx;
+                        ball.vy -= 2 * vDotN * ny;
+                        ball.vx *= friction * 0.7;
+                        ball.vy *= friction * 0.7;
+                    }
+                }
+            });
+        });
+
+        // Ball-ball collision (no velocity swap, just separation)
+        for (let i = 0; i < balls.length; i++) {
+            for (let j = i + 1; j < balls.length; j++) {
+                const ballA = balls[i];
+                const ballB = balls[j];
+                const dx = ballA.x - ballB.x;
+                const dy = ballA.y - ballB.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < ballRadius * 2) {
+                    const overlap = ballRadius * 2 - dist;
+                    const angle = Math.atan2(dy, dx);
+                    ballA.x += Math.cos(angle) * (overlap / 2);
+                    ballA.y += Math.sin(angle) * (overlap / 2);
+                    ballB.x -= Math.cos(angle) * (overlap / 2);
+                    ballB.y -= Math.sin(angle) * (overlap / 2);
+                }
+            }
+        }
+
+        // Floor collision / scoring
+        balls.forEach(ball => {
+            if (!ball.settled && ball.y + ballRadius > canvas.height - 50) {
+                ball.settled = true;
+                const index = Math.floor(ball.x / scoreBoxWidth);
+                scoreBoxes.forEach(box => box.classList.remove('active'));
+                scoreBoxes[index].classList.add('active');
+                setTimeout(() => {
+                    const multiplier = scoreBoxMultipliers[index];
+                    const win = Math.round(ballCost * multiplier);
+                    money += win;
+                    moneySpan.textContent = `Money: $${money}`;
+                    scoreBoxes[index].classList.remove('active');
+                    balls = balls.filter(b => b !== ball);
+                    checkSpawnButton();
+                }, 800);
+            }
+        });
+    }
+
+    function checkSpawnButton() {
+        spawnBtn.disabled = money < ballCost;
+    }
+
+    function gameLoop() {
+        updateBalls();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+
+    spawnBtn.addEventListener('click', () => {
+        if (money >= ballCost) {
+            const x = canvas.width / 2 + (Math.random() - 0.5) * 60;
+            balls.push({
+                x, y: ballRadius + 5,
+                vx: (Math.random()-0.5)*2,
+                vy: 0,
+                settled: false
+            });
+            money -= ballCost;
+            moneySpan.textContent = `Money: $${money}`;
+            checkSpawnButton();
+        }
+    });
+
+    moneySpan.textContent = `Money: $${money}`;
+    checkSpawnButton();
+    gameLoop();
+    </script>
 </body>
 </html>

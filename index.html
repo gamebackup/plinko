@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Plinko Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Plinko Game</h1>
+    <div id="game-info">
+        <span id="money">Money: $250</span>
+        <button id="spawn-ball">Drop Ball ($25)</button>
+    </div>
+    <canvas id="plinko-canvas" width="400" height="600"></canvas>
+    <div id="score-boxes">
+        <div class="score-box" data-multiplier="0.5">x0.5</div>
+        <div class="score-box" data-multiplier="1">x1</div>
+        <div class="score-box" data-multiplier="1.5">x1.5</div>
+        <div class="score-box" data-multiplier="1">x1</div>
+        <div class="score-box" data-multiplier="0.5">x0.5</div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>

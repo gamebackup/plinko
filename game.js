@@ -77,10 +77,10 @@ function updateBalls() {
         // Wall collision
         if (ball.x - ballRadius < 0) {
             ball.x = ballRadius;
-            ball.vx *= -0.7;
+            ball.vx *= -0.4;
         } else if (ball.x + ballRadius > canvas.width) {
             ball.x = canvas.width - ballRadius;
-            ball.vx *= -0.7;
+            ball.vx *= -0.4;
         }
 
         // Peg collision
